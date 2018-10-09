@@ -28,5 +28,5 @@ main = do
   let snwc@(NetworkCsv slc snc) = simplifyNetworkCsv nwc
 
   cd <- Dir.getCurrentDirectory
-  writeFile (cd <> "/output/simple_link.csv") $ encodeLinkCsv slc
-  writeFile (cd <> "/output/simple_node.csv") $ encodeNodeCsv snc
+  writeFile (cd <> "/output/simple_links.csv") $ encodeLinkCsv slc
+  writeFile (cd <> "/output/simple_nodes.csv") $ encodeNodeCsv snc
