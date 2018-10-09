@@ -3,18 +3,16 @@
 {-# LANGUAGE OverloadedLists   #-}
 module Main where
 
-import           Algorithm.Search
-import           Csv.LinkCsv          (decodeLinkCsv, makeLinkCsv, encodeLinkCsv, LinkWithCond)
-import           Csv.NodeCsv          (decodeNodeCsv, makeNodeCsv, encodeNodeCsv)
+import           Link                 (decodeLinkCsv, makeLinkCsv, encodeLinkCsv, LinkWithCond)
+import           Node                 (decodeNodeCsv, makeNodeCsv, encodeNodeCsv)
 import qualified Data.Map.Lazy        as Map
 import qualified Data.Set             as Set
 import           Network
 import           System.IO.Unsafe
-import           Csv.NetworkCsv (NetworkCsv(..), simplifyNetworkCsv, makeNetwork)
-import qualified System.Directory as Dir
-import Data.List (find)
-import System.Environment (getArgs)
-import Data.Vector as V (filter, Vector)
+import qualified System.Directory     as Dir
+import           Data.List            (find)
+import           System.Environment   (getArgs)
+import           Data.Vector          as V (filter, Vector)
 import qualified Data.Text            as T
 
 main :: IO ()
