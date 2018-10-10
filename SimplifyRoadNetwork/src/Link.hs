@@ -96,9 +96,9 @@ Path g2 _ `isNextPath` Path g1 _ = g2 `isNextGraph` g1
 
 isNextGraph :: Graph -> Graph -> Bool
 Edge l2 `isNextGraph` Edge l1 = l2 `isNextLink` l1
-Edge l `isNextGraph` g@(Graph v) = (l `isNextLink` compose g) && notElem (invertLink l) v -- && V.notElem Link v
-g@(Graph v) `isNextGraph` Edge l = (compose g `isNextLink` l) && notElem (invertLink l) v -- && V.notElem Link v
-g2@(Graph v2) `isNextGraph` g1@(Graph v1) = (compose g2 `isNextLink` compose g1) && not (any (`elem` v1) v2) && not (any (`elem` v1) (invertLink <$> v2))
+Edge l `isNextGraph` g@(Graph v) = (l `isNextLink` compose g) && notElem (invertLink l) v && V.notElem l v
+g@(Graph v) `isNextGraph` Edge l = (compose g `isNextLink` l) && notElem (invertLink l) v && V.notElem l v
+g2@(Graph v2) `isNextGraph` g1@(Graph v1) = (compose g2 `isNextLink` compose g1) && not (any (`elem` v1) v2 || any (`elem` v1) (invertLink <$> v2))
 
 isNextLink :: Link -> Link -> Bool
 (n3 :->: n4) `isNextLink` (n1 :->: n2) = n2 == n3 && n1 /= n4

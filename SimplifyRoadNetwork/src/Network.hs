@@ -19,6 +19,7 @@ import           Data.Either.Combinators    (rightToMaybe)
 import           Link                       
 import           Node           
 
+import Debug.Trace
 
 
 data NetworkCsv = NetworkCsv LinkCsv NodeCsv deriving (Show)
@@ -91,25 +92,13 @@ cutDeadEnd lc = V.filter (\(LinkWithCond p _ _) -> any (\(LinkWithCond _p _ _) -
 -}
 
 cutDeadEnd :: LinkCsv -> LinkCsv
-cutDeadEnd lc =
-  (`execState` lc) $ go (path <$> lc)
+cutDeadEnd = go
   where
-    go :: V.Vector Path -> State LinkCsv ()
-    go ps =
-      do
-        ps1 <- f ps
-        lc1 <- get
-        if V.null ps1
-          then put lc1
-          else go ps1
-
-    f :: V.Vector Path -> State LinkCsv (V.Vector Path)
-    f ps = state $ \ lc ->
-      let
-        dps = V.filter (`deadEnd` lc) ps
-        lc1 = V.filter ((`V.notElem` dps) . path) lc
-      in
-        (dps, lc1)
+    go lc
+      | V.null dlc = lc
+      | otherwise = trace "aaa" $ go rlc
+      where
+        (dlc, rlc) = V.partition ((`deadEnd` lc) . path) lc
 
 deadEnd :: Path -> LinkCsv -> Bool
 deadEnd p lc = not (any (\_lwc -> p `isNextPath` path _lwc) lc && any (\_lwc -> path _lwc `isNextPath` p) lc)
