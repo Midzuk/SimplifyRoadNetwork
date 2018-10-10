@@ -61,8 +61,8 @@ simplifyLinkCsv lc =
               lc_ <- get
               put $ V.cons (LinkWithCond (fromJust $ maybeP1 <> Just p <> maybeP2) cond (fromJust $ maybeS1 <> Just s <> maybeS2)) lc_
 
-        g1 :: State LinkCsv (Maybe LinkWithCond)
-        g1 =
+        g1 :: Bool -> State LinkCsv (Maybe LinkWithCond, Bool)
+        g1 b =
           state $ \lc ->
             case V.partition (\_lwc -> p `isNextPath` path _lwc) lc of
               ([lwc1], lc1) ->
@@ -70,8 +70,10 @@ simplifyLinkCsv lc =
                   then (Just lwc1, lc1)
                   else (Nothing, lc)
               _            -> (Nothing, lc)
+          where
+            h = if b then (p `isNextPath`) else (`isNextPath` p)
         
-        g2 :: State LinkCsv (Maybe LinkWithCond)
+        g2 :: State LinkCsv (Maybe LinkWithCond, Bool)
         g2 =
           state $ \lc ->
             case V.partition (\_lwc -> path _lwc `isNextPath` p) lc of
