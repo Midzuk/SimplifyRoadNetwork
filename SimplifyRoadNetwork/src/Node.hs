@@ -15,9 +15,10 @@ type Node = Int
 
 type Lat = Double
 type Lon = Double
+type SignalOut = Maybe T.Text
 
 -- とりあえず信号機は無視
-data NodeCsvOut = NodeCsvOut Node Lat Lon deriving Show
+data NodeCsvOut = NodeCsvOut Node Lat Lon SignalOut deriving Show
 
 instance FromNamedRecord NodeCsvOut where
   parseNamedRecord m =
@@ -25,6 +26,7 @@ instance FromNamedRecord NodeCsvOut where
       <$> m .: "node_id"
       <*> m .: "lat"
       <*> m .: "lon"
+      <*> m .: "signal"
 
 decodeNodeCsv :: FilePath -> IO NodeCsv
 decodeNodeCsv fp = do
@@ -33,18 +35,23 @@ decodeNodeCsv fp = do
   let Right (_, ls) = decodeByName bs :: Either String (Header, V.Vector NodeCsvOut)
   return $ makeNodeCsv ls
 
+data NodeCond = NodeCond Lat Lon SignalOut deriving (Eq, Show)
 
-type NodeCsv =
-  Map.Map Node (Lat, Lon)
+type NodeCsv = Map.Map Node NodeCond
 
 makeNodeCsv :: V.Vector NodeCsvOut -> NodeCsv
 makeNodeCsv = foldr f Map.empty
   where
-    f (NodeCsvOut n lat lon) = Map.insert n (lat, lon)
+    f (NodeCsvOut n lat lon signalOut) = Map.insert n (NodeCond lat lon signalOut)
 
 encodeNodeCsv :: NodeCsv -> String
 encodeNodeCsv nc = 
   "node_id,lat,lon"
     <> Map.foldrWithKey
-      (\node_ (lat_, lon_) str_ -> str_ <> "\n" <> show node_ <> "," <> show lat_ <> "," <> show lon_)
-        "" nc
+      (\node (NodeCond lat lon _) str ->
+        str
+          <> "\n"
+          <> show node <> ","
+          <> show lat <> ","
+          <> show lon)
+    "" nc

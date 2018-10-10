@@ -7,40 +7,40 @@
 module Network where
 
 import           Control.Monad.State.Strict (State, evalState, execState,
-                                             runState, state, put, get)
-import           Link                       
-import           Node                       (NodeCsv)
+                                             runState, state, put, get)            
 import qualified Data.Map.Lazy              as Map
 import qualified Data.Vector                as V
 --import           Network
 import           Data.Maybe                 (fromJust)
 import qualified Data.Set                   as Set
+import           Data.Monoid
+
+import           Link                       
+import           Node           
 
 
 
 data NetworkCsv = NetworkCsv LinkCsv NodeCsv deriving (Show)
-type NetworkCsvInput = NetworkCsv
-type NetworkCsvOutput = NetworkCsv
 
 simplifyNetworkCsv :: NetworkCsv -> NetworkCsv
 simplifyNetworkCsv (NetworkCsv lci nci) =
   let 
     lco = simplifyLinkCsv $ longestLinkCsv lci
     nodes = f lco :: Set.Set Node
-    nco = Map.filterWithKey (\node_ _ -> Set.member node_ nodes) nci
+    nco = Map.filterWithKey (\_node _ -> Set.member _node nodes) nci
   in
     NetworkCsv lco nco
 
   where
-    f lco = foldr (\(composeLink -> org_ :->: dest_, _) nodes_ -> (Set.insert org_ . Set.insert dest_) nodes_) Set.empty lco
+    f lco = foldr (\(LinkWithCond (composePath -> _org :->: _dest) _ _) _nodes -> (Set.insert _org . Set.insert _dest) _nodes) Set.empty lco
+
 
 simplifyLinkCsv :: LinkCsv -> LinkCsv
 simplifyLinkCsv lc =
   go lc []
---V.foldr f []
   where
     go [] lco = lco
-    go (uncons -> (lwc@(link, cond), lci)) lco =
+    go (uncons -> (lwc@(LinkWithCond p cond s), lci)) lco =
       go lci $ f lco
       where
         --Nothing (交差点および行き止まり) を無視して和を計算
@@ -49,30 +49,59 @@ simplifyLinkCsv lc =
         f lc =
           (`execState` lc) $
             do
-              maybeLink1 <- g1
-              maybeLink2 <- g2
-              lc_ <- get
-              put $ V.cons (fromJust $ maybeLink1 <> Just link <> maybeLink2, cond) lc_
+              maybeLwc1 <- g1
+              maybeLwc2 <- g2
 
-        g1 :: State LinkCsv (Maybe Link)
+              let maybeS1 = signal <$> maybeLwc1
+              let maybeS2 = signal <$> maybeLwc2
+
+              let maybeP1 = path <$> maybeLwc1
+              let maybeP2 = path <$> maybeLwc2
+
+              lc_ <- get
+              put $ V.cons (LinkWithCond (fromJust $ maybeP1 <> Just p <> maybeP2) cond (fromJust $ maybeS1 <> Just s <> maybeS2)) lc_
+
+        g1 :: State LinkCsv (Maybe LinkWithCond)
         g1 =
           state $ \lc ->
-            case V.partition (\(link_, cond_) -> isNextLink link_ link) lc of
-              ([(link1, cond1)], lc1) ->
-                if cond == cond1 && not (any (\(link_, _) -> isNextLink link_ link) lci)
-                  then (Just link1, lc1)
+            case V.partition (\_lwc -> p `isNextPath` path _lwc) lc of
+              ([lwc1], lc1) ->
+                if cond == linkCond lwc1 && not (any (\_lwc -> p `isNextPath` path _lwc) lci)
+                  then (Just lwc1, lc1)
                   else (Nothing, lc)
               _            -> (Nothing, lc)
         
-        g2 :: State LinkCsv (Maybe Link)
+        g2 :: State LinkCsv (Maybe LinkWithCond)
         g2 =
           state $ \lc ->
-            case V.partition (\(link_, cond_) -> isNextLink link link_) lc of
-              ([(link2, cond2)], lc2) ->
-                if cond == cond2 && not (any (\(link_, _) -> isNextLink link link_) lci)
-                  then (Just link2, lc2)
+            case V.partition (\_lwc -> path _lwc `isNextPath` p) lc of
+              ([lwc2], lc2) ->
+                if cond == linkCond lwc2 && not (any (\_lwc -> path _lwc `isNextPath` p) lci)
+                  then (Just lwc2, lc2)
                   else (Nothing, lc)
               _            -> (Nothing, lc)
+
+{-
+cutDeadEnd :: LinkCsv -> LinkCsv
+cutDeadEnd lc = V.filter (\(LinkWithCond p _ _) -> any (\(LinkWithCond _p _ _) -> p `isNextPath` _p) lc && any (\_p -> _p `isNextPath` p) lc) lc
+-}
+
+
+{-
+deadEnd :: Path -> LinkCsv -> Bool
+deadEnd p lc
+  | nps == [] || pps == [] = False
+  | otherwise = undefined
+  where
+    nps = nextPath p lc
+    pps = prevPath p lc
+
+nextPath :: Path -> LinkCsv -> V.Vector Path
+nextpath p lc = path <$> V.filter (\_lwc -> path _lwc `isNextPath` p) lc
+
+prevPath :: Path -> LinkCsv -> V.Vector Path
+prevPath p lc = path <$> V.filter (\_lwc -> p `isNextPath` path _lwc) lc
+-}
 
 uncons :: V.Vector a -> (a, V.Vector a)
 uncons v = (V.head v, V.tail v)
@@ -84,15 +113,17 @@ longestLinkCsv lc =
   where
     go (V.null -> True) lcs =
       foldr1 (\lc1 lc2 -> if totalDistance lc1 > totalDistance lc2 then lc1 else lc2) lcs
-    go (uncons -> (lwc@(link, _), lci)) lcs =
+    go (uncons -> (lwc, lci)) lcs =
       let
-        (lcs1, lcs2) = V.partition (any (\(link_, _) -> isNextLink link_ link || isNextLink link link_)) lcs
+        (lcs1, lcs2) = V.partition (any $ \_lwc -> path lwc `isNextPath` path _lwc || path _lwc `isNextPath` path lwc) lcs
       in
         go lci $ V.cons (V.cons lwc $ foldr (<>) [] lcs1) lcs2
 
 
 totalDistance :: LinkCsv -> Double
-totalDistance = foldr (\(Link _ dist, _) total -> total + dist) 0
+totalDistance = foldr (\(LinkWithCond (Path _ dist) _ _) total -> total + dist) 0
 
+{-
 makeNetwork :: NetworkCsv -> Network
-makeNetwork (NetworkCsv lc _) = foldr (\(Link g@(compose -> od) dist, _) n -> Map.insertWith min od (Link g dist) n) Map.empty lc
+makeNetwork (NetworkCsv lc _) = foldr (\(Path g@(compose -> od) dist, _) n -> Map.insertWith min od (Path g dist) n) Map.empty lc
+-}

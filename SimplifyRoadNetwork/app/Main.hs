@@ -20,13 +20,13 @@ main = do
   --args <- getArgs
   --let [latOrg, lonOrg, latDest, lonDest] = read <$> args
 
-  lc <- decodeLinkCsv "/temporary/temp_links.csv"
   nc <- decodeNodeCsv "/temporary/temp_nodes.csv"
+  lc <- decodeLinkCsv "/temporary/temp_links.csv" nc
  
   --let lc1 = V.filter (\(_, Just _highway) -> _highway /= "footway" && _highway /= "service") lc
   let nwc = NetworkCsv lc nc
   let snwc@(NetworkCsv slc snc) = simplifyNetworkCsv nwc
 
   cd <- Dir.getCurrentDirectory
-  writeFile (cd <> "/output/simple_links.csv") $ encodeLinkCsv slc
   writeFile (cd <> "/output/simple_nodes.csv") $ encodeNodeCsv snc
+  writeFile (cd <> "/output/simple_links.csv") $ encodeLinkCsv slc
