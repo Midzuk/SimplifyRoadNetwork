@@ -14,6 +14,7 @@ import qualified Data.Vector                as V
 import           Data.Maybe                 (fromJust)
 import qualified Data.Set                   as Set
 import           Data.Monoid
+import           Data.Either.Combinators    (rightToMaybe)
 
 import           Link                       
 import           Node           
@@ -49,8 +50,8 @@ simplifyLinkCsv lc =
         f lc =
           (`execState` lc) $
             do
-              maybeLwc1 <- g1
-              maybeLwc2 <- g2
+              maybeLwc1 <- g True
+              maybeLwc2 <- g False
 
               let maybeS1 = signal <$> maybeLwc1
               let maybeS2 = signal <$> maybeLwc2
@@ -61,19 +62,20 @@ simplifyLinkCsv lc =
               lc_ <- get
               put $ V.cons (LinkWithCond (fromJust $ maybeP1 <> Just p <> maybeP2) cond (fromJust $ maybeS1 <> Just s <> maybeS2)) lc_
 
-        g1 :: Bool -> State LinkCsv (Maybe LinkWithCond, Bool)
-        g1 b =
+        g :: Bool -> State LinkCsv (Maybe LinkWithCond)
+        g b =
           state $ \lc ->
-            case V.partition (\_lwc -> p `isNextPath` path _lwc) lc of
+            case V.partition (\_lwc -> h path _lwc) lc of
               ([lwc1], lc1) ->
-                if cond == linkCond lwc1 && not (any (\_lwc -> p `isNextPath` path _lwc) lci)
+                if cond == linkCond lwc1 && not (any (\_lwc -> h path _lwc) lci)
                   then (Just lwc1, lc1)
                   else (Nothing, lc)
               _            -> (Nothing, lc)
           where
             h = if b then (p `isNextPath`) else (`isNextPath` p)
         
-        g2 :: State LinkCsv (Maybe LinkWithCond, Bool)
+        {-
+        g2 :: State LinkCsv (Maybe LinkWithCond)
         g2 =
           state $ \lc ->
             case V.partition (\_lwc -> path _lwc `isNextPath` p) lc of
@@ -82,7 +84,7 @@ simplifyLinkCsv lc =
                   then (Just lwc2, lc2)
                   else (Nothing, lc)
               _            -> (Nothing, lc)
-
+        -}
 {-
 cutDeadEnd :: LinkCsv -> LinkCsv
 cutDeadEnd lc = V.filter (\(LinkWithCond p _ _) -> any (\(LinkWithCond _p _ _) -> p `isNextPath` _p) lc && any (\_p -> _p `isNextPath` p) lc) lc

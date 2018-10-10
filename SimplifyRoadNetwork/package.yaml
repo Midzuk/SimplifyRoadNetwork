@@ -28,6 +28,7 @@ dependencies:
 - cassava
 - text
 - directory
+- either
 
 library:
   source-dirs: src
