@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns #-}
+--{-# LANGUAGE ViewPatterns #-}
 
 module Link where
 
