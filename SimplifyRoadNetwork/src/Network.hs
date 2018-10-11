@@ -96,7 +96,7 @@ cutDeadEnd = go
   where
     go lc
       | V.null dlc = lc
-      | otherwise = trace "aaa" $ go rlc
+      | otherwise = go rlc
       where
         (dlc, rlc) = V.partition ((`deadEnd` lc) . path) lc
 
