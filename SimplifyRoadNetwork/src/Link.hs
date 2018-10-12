@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 --{-# LANGUAGE ViewPatterns #-}
@@ -19,11 +20,13 @@ import           Node
 
 
 
-type Cost = Double
+--type Cost = Double
+type Distance = Double
 
-data Link = Node :->: Node deriving (Eq, Show)
+data Link = (:->:) { origin :: Node , destination :: Node, distance :: Distance } deriving (Eq, Ord, Show)
 infixr 5 :->:
 
+{-
 instance Ord Link where
   compare l1@(n1 :->: n2) l2@(n3 :->: n4)
     | l1 == l2 = EQ
@@ -32,13 +35,15 @@ instance Ord Link where
         EQ ->
           if n2 < n4 then LT else GT
         o -> o
+-}
 
 instance Semigroup Link where
-  (<>) (n1 :->: n2) (n3 :->: n4)
-    | n2 == n3 = n1 :->: n4
+  (<>) ((:->:) org1 dest1 dist1) ((:->:) org2 dest2 dist2)
+    | dest1 == org2 = org1 :->: dest2 $ dist1 + dist2
     | otherwise = error "Semigroup Link Error."
 
-data Path = Path Graph Cost deriving Show
+{-}
+data Path = Path { graph :: Graph, cost :: Cost } deriving Show
 
 instance Eq Path where
   Path g1 c1 == Path g2 c2 = g1 == g2 && c1 == c2
@@ -54,17 +59,25 @@ instance Ord Path where
 instance Semigroup Path where
   Path g1 c1 <> Path g2 c2 = Path (g1 <> g2) (c1 + c2)
 
+-}
+
 --type Network = Map.Map Link Path
 
-data Graph = Edge Link | Graph (V.Vector Link) deriving Show
+--data Graph = Edge Link | Graph (V.Vector Link) deriving Show
+type Graph = V.Vector Node
 
+{-
 compose :: Graph -> Link
 compose (Edge l) = l
 compose (Graph v) = foldr1 (<>) v
+-}
 
+{-
 composePath :: Path -> Link
 composePath (Path g _) = compose g
+-}
 
+{-
 instance Eq Graph where
   g1 == g2 = compose g1 == compose g2
 
@@ -75,10 +88,11 @@ instance Ord Graph where
     | otherwise = GT
 
 instance Semigroup Graph where
-  Edge link1 <> Edge link2 = Graph [link1, link2]
+  Edge l1 <> Edge l2 = Graph [l1, l2]
   Edge l <> Graph v = Graph $ V.cons l v
   Graph v <> Edge l = Graph $ V.snoc v l
   Graph v1 <> Graph v2 = Graph $ v1 <> v2
+-}
 
 {-
 networkFromList :: [(Link, Cost)] -> Network
@@ -91,6 +105,7 @@ insertLink l@(Path (compose -> l) _) n =
     Just _  -> n
 -}
 
+{-
 isNextPath :: Path -> Path -> Bool
 Path g2 _ `isNextPath` Path g1 _ = g2 `isNextGraph` g1
 
@@ -99,14 +114,17 @@ Edge l2 `isNextGraph` Edge l1 = l2 `isNextLink` l1
 Edge l `isNextGraph` g@(Graph v) = (l `isNextLink` compose g) && notElem (invertLink l) v && V.notElem l v
 g@(Graph v) `isNextGraph` Edge l = (compose g `isNextLink` l) && notElem (invertLink l) v && V.notElem l v
 g2@(Graph v2) `isNextGraph` g1@(Graph v1) = (compose g2 `isNextLink` compose g1) && not (any (`elem` v1) v2 || any (`elem` v1) (invertLink <$> v2))
+-}
 
 isNextLink :: Link -> Link -> Bool
-(n3 :->: n4) `isNextLink` (n1 :->: n2) = n2 == n3 && n1 /= n4
+((:->:) org1 dest1 dist1) `isNextLink` ((:->:) org2 dest2 dist2) = dest1 == org2 && org1 /= dest2
+
 
 {-
 inverseNetwork :: Network -> Network
 inverseNetwork = Map.foldrWithKey (\(n1 :->: n2) (Path _ c) n -> Map.insert (n2 :->: n1) (Path (Edge (n2 :->: n1)) c) n) Map.empty
--}
+
+
 
 invertLink :: Link -> Link
 invertLink (n1 :->: n2) = n2 :->: n1
@@ -119,6 +137,7 @@ overlap g1@(Graph v1) g2@(Graph v2) = any (`elem` v1) v2
 
 overlapLink :: Path -> Path -> Bool
 overlapLink (Path g1 _) (Path g2 _) = overlap g1 g2
+-}
 
 showMaybe :: Show a => Maybe a -> String
 showMaybe (Just a) = show a
@@ -126,10 +145,9 @@ showMaybe Nothing = ""
 
 
 
-type Org = Node
-type Dest = Node
+type Origin = Node
+type Destination = Node
 
-type Dist = Double --距離
 type Highway = Maybe T.Text
 type Oneway = Maybe T.Text
 type MaxSpeed = Maybe T.Text
@@ -144,7 +162,7 @@ type Bicycle = Maybe T.Text
 
 type Signal = Sum Int
 
-data LinkCsvOut = LinkCsvOut Org Dest Dist Highway Oneway MaxSpeed Lanes Width Bridge Tunnel Surface Service Foot Bicycle deriving (Show)
+data LinkCsvOut = LinkCsvOut Origin Destination Distance Highway Oneway MaxSpeed Lanes Width Bridge Tunnel Surface Service Foot Bicycle deriving (Show)
 
 instance FromNamedRecord LinkCsvOut where
   parseNamedRecord m =
@@ -175,7 +193,7 @@ decodeLinkCsv fp nc = do
 
 data LinkCond = LinkCond Highway MaxSpeed Lanes Width Bridge Tunnel Surface Service Foot Bicycle deriving (Eq, Show)
 
-data LinkWithCond = LinkWithCond { path :: Path, linkCond :: LinkCond, signal :: Signal } deriving (Eq, Show)
+data LinkWithCond = LinkWithCond { link :: Link, linkCond :: LinkCond, signal :: Signal } deriving (Eq, Show)
 
 type LinkCsv = V.Vector LinkWithCond
 
@@ -187,8 +205,16 @@ makeLinkCsv nc = foldr f []
       | oneway == Just "-1" = V.cons linkDO
       | otherwise = V.cons linkOD . V.cons linkDO
       where
-        linkOD = LinkWithCond (Path (Edge (org :->: dest)) dist) (LinkCond highway max_speed lanes width bridge tunnel surface service foot bicycle) $ f dest
-        linkDO = LinkWithCond (Path (Edge (dest :->: org)) dist) (LinkCond highway max_speed lanes width bridge tunnel surface service foot bicycle) $ f org
+        linkOD =
+          LinkWithCond
+            { link = org :->: dest $ dist
+            , linkCond = LinkCond highway max_speed lanes width bridge tunnel surface service foot bicycle
+            , signal = f dest }
+        linkDO =
+          LinkWithCond           
+            { link = dest :->: org $ dist
+            , linkCond = LinkCond highway max_speed lanes width bridge tunnel surface service foot bicycle
+            , signal = f org }
 
         f n =
           case nc Map.! n of
@@ -200,24 +226,21 @@ encodeLinkCsv :: LinkCsv -> String
 encodeLinkCsv lc =
   "node_id_org,node_id_dest,distance,signal,highway,max_speed,lanes,width,bridge,tunnel,surface,service,foot,bicycle"
     <> foldr
-      (\(LinkWithCond (Path g dist) (LinkCond highway max_speed lanes width bridge tunnel surface service foot bicycle) s) str ->
-        let
-          org :->: dest = compose g
-        in 
-          str
-            <> "\n"
-            <> show org <> ","
-            <> show dest <> ","
-            <> show dist <> ","
-            <> show (getSum s) <> ","
-            <> showMaybe highway <> ","
-            <> showMaybe max_speed <> ","
-            <> showMaybe lanes <> ","
-            <> showMaybe width <> ","
-            <> showMaybe bridge <> ","
-            <> showMaybe tunnel <> ","
-            <> showMaybe surface <> ","
-            <> showMaybe service <> ","
-            <> showMaybe foot <> ","
-            <> showMaybe bicycle <> ",")
+      (\(LinkWithCond ((:->:) org dest dist) (LinkCond highway max_speed lanes width bridge tunnel surface service foot bicycle) s) str ->
+        str
+          <> "\n"
+          <> show org <> ","
+          <> show dest <> ","
+          <> show dist <> ","
+          <> show (getSum s) <> ","
+          <> showMaybe highway <> ","
+          <> showMaybe max_speed <> ","
+          <> showMaybe lanes <> ","
+          <> showMaybe width <> ","
+          <> showMaybe bridge <> ","
+          <> showMaybe tunnel <> ","
+          <> showMaybe surface <> ","
+          <> showMaybe service <> ","
+          <> showMaybe foot <> ","
+          <> showMaybe bicycle <> ",")
       "" lc

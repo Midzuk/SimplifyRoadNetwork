@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Node where
@@ -13,12 +14,11 @@ import qualified System.Directory     as Dir
 
 type Node = Int
 
-type Lat = Double
-type Lon = Double
+type Latitude = Double
+type Longitude = Double
 type SignalOut = Maybe T.Text
 
--- とりあえず信号機は無視
-data NodeCsvOut = NodeCsvOut Node Lat Lon SignalOut deriving Show
+data NodeCsvOut = NodeCsvOut Node Latitude Longitude SignalOut deriving Show
 
 instance FromNamedRecord NodeCsvOut where
   parseNamedRecord m =
@@ -35,7 +35,7 @@ decodeNodeCsv fp = do
   let Right (_, ls) = decodeByName bs :: Either String (Header, V.Vector NodeCsvOut)
   return $ makeNodeCsv ls
 
-data NodeCond = NodeCond Lat Lon SignalOut deriving (Eq, Show)
+data NodeCond = NodeCond { latitude :: Latitude, longitude :: Longitude, signalOut :: SignalOut } deriving (Eq, Show)
 
 type NodeCsv = Map.Map Node NodeCond
 
