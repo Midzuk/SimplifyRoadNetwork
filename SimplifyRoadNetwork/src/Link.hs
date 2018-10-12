@@ -23,7 +23,7 @@ import           Node
 --type Cost = Double
 type Distance = Double
 
-data Link = (:->:) { origin :: Node , destination :: Node, distance :: Distance } deriving (Eq, Ord, Show)
+data Link = (:->:) { origin :: NodeId , destination :: NodeId, distance :: Distance } deriving (Eq, Ord, Show)
 infixr 5 :->:
 
 {-
@@ -41,6 +41,9 @@ instance Semigroup Link where
   (<>) ((:->:) org1 dest1 dist1) ((:->:) org2 dest2 dist2)
     | dest1 == org2 = org1 :->: dest2 $ dist1 + dist2
     | otherwise = error "Semigroup Link Error."
+
+invertLink :: Link -> Link
+invertLink ((:->:) org dest dist) = (:->:) dest org dist
 
 {-}
 data Path = Path { graph :: Graph, cost :: Cost } deriving Show
@@ -117,7 +120,7 @@ g2@(Graph v2) `isNextGraph` g1@(Graph v1) = (compose g2 `isNextLink` compose g1)
 -}
 
 isNextLink :: Link -> Link -> Bool
-((:->:) org1 dest1 dist1) `isNextLink` ((:->:) org2 dest2 dist2) = dest1 == org2 && org1 /= dest2
+((:->:) org2 dest2 _) `isNextLink` ((:->:) org1 dest1 _) = dest1 == org2 && org1 /= dest2
 
 
 {-
@@ -145,8 +148,8 @@ showMaybe Nothing = ""
 
 
 
-type Origin = Node
-type Destination = Node
+type Origin = NodeId
+type Destination = NodeId
 
 type Highway = Maybe T.Text
 type Oneway = Maybe T.Text
@@ -191,7 +194,7 @@ decodeLinkCsv fp nc = do
   let Right (_, ls) = decodeByName bs :: Either String (Header, V.Vector LinkCsvOut)
   return $ makeLinkCsv nc ls
 
-data LinkCond = LinkCond Highway MaxSpeed Lanes Width Bridge Tunnel Surface Service Foot Bicycle deriving (Eq, Show)
+data LinkCond = LinkCond Highway MaxSpeed Lanes Width Bridge Tunnel Surface Service Foot Bicycle deriving (Eq, Ord, Show)
 
 data LinkWithCond = LinkWithCond { link :: Link, linkCond :: LinkCond, signal :: Signal } deriving (Eq, Show)
 
@@ -216,9 +219,9 @@ makeLinkCsv nc = foldr f []
             , linkCond = LinkCond highway max_speed lanes width bridge tunnel surface service foot bicycle
             , signal = f org }
 
-        f n =
-          case nc Map.! n of
-            NodeCond _ _ so
+        f ni =
+          case V.filter (\_n -> nodeId _n == ni) nc of
+            [Node _ _ so]
               | so == Just "yes" -> Sum 1
               | otherwise -> Sum 0
 

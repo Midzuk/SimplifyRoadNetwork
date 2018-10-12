@@ -14,6 +14,9 @@ import           Data.List            (find)
 import           System.Environment   (getArgs)
 import           Data.Vector          as V (filter, Vector)
 import qualified Data.Text            as T
+import           Debug.Trace
+
+
 
 main :: IO ()
 main = do

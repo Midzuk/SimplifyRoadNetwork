@@ -16,6 +16,8 @@ import           Data.Maybe                 (fromJust)
 import qualified Data.Set                   as Set
 import           Data.Monoid
 import           Data.Either.Combinators    (rightToMaybe)
+import           Data.Function
+import           Control.Monad
 
 import           Link                       
 import           Node           
@@ -144,37 +146,92 @@ makeNetwork (NetworkCsv lc _) = foldr (\(Path g@(compose -> od) dist, _) n -> Ma
 --data NodeCond = NodeCond { latitude :: Latitude, longitude :: Longitude, signalOut :: SignalOut } deriving (Eq, Show)
 --type NodeCsv = Map.Map Node NodeCond
 
+{-
 cutDeadEnd :: LinkCsv -> LinkCsv
-cutDeadEnd = go
+cutDeadEnd lc = go dlc_ rlc_
   where
-    go lc
-      | V.null dlc = lc
-      | otherwise = go rlc
+    (dlc_, rlc_) = V.partition (\_lwc -> ((`deadEnd` lc) . origin $ link _lwc) || ((`deadEnd` lc) . destination $ link _lwc)) lc
+    go dlc rlc
+      | V.null dlc = trace "ddd" $ rlc
+      | otherwise = trace "aaa" $ go dlc2 (rlc1 <> rlc2)
       where
-        (dlc, rlc) = V.partition ((`deadEnd` lc) . link) lc
+        (dlc1, rlc1) = trace "bbb" $ foldr (\_lwc _lc -> _lc <> nearbyLinkCsv (link _lwc) rlc) ([], []) dlc
+        (dlc2, rlc2) = trace "ccc" $ V.partition (\_lwc -> ((`deadEnd` lc) . origin $ link _lwc) || ((`deadEnd` lc) . destination $ link _lwc)) dlc1
+-}
 
+cutDeadEnd :: LinkCsv -> NodeCsv -> NodeCsv
+cutDeadEnd lc_ nc_ = undefined
+  where
+    (dnc, rnc1) = V.partition ((`deadEnd` lc_) . nodeId) nc_
+    (nnc, rnc2) = undefined
+
+    go :: LinkCsv -> NodeCsv -> NodeCsv -> NodeCsv
+    go lc nc = undefined
+
+deadEnd :: NodeId -> LinkCsv -> Bool
+deadEnd ni lc = nearbyNodeNum ni lc < 2
+
+{-
 deadEnd :: Link -> LinkCsv -> Bool
 deadEnd l lc = not (any (\_lwc -> l `isNextLink` link _lwc) lc && any (\_lwc -> link _lwc `isNextLink` l) lc)
+-}
 
 --実験
 
-nextLinkCsv :: Node -> LinkCsv -> LinkCsv
-nextLinkCsv n = V.filter (\_lwc -> (origin $ link _lwc) == n)
+orgLinkCsv :: NodeId -> LinkCsv -> LinkCsv
+orgLinkCsv ni = V.filter (\_lwc -> (origin $ link _lwc) == ni)
 
-prevLinkCsv :: Node -> LinkCsv -> LinkCsv
-prevLinkCsv n = V.filter (\_lwc -> (destination $ link _lwc) == n)
+destLinkCsv :: NodeId -> LinkCsv -> LinkCsv
+destLinkCsv ni = V.filter (\_lwc -> (destination $ link _lwc) == ni)
+
+nextNode :: NodeId -> LinkCsv -> V.Vector NodeId
+nextNode ni lc = (destination . link) <$> orgLinkCsv ni lc
+
+isNextNode :: NodeId -> NodeId -> LinkCsv -> Bool
+isNextNode ni2 ni1 lc = ni2 `V.elem` (nextNode ni1 lc)
+
+prevNode :: NodeId -> LinkCsv -> V.Vector NodeId
+prevNode ni lc = (origin . link) <$> destLinkCsv ni lc
+
+isPrevNode :: NodeId -> NodeId -> LinkCsv -> Bool
+isPrevNode ni1 ni2 lc = ni1 `V.elem` (prevNode ni2 lc)
+
+nearbyNodeNum :: NodeId -> LinkCsv -> Int
+nearbyNodeNum ni lc = Set.size $ (Set.union `on` V.foldr Set.insert Set.empty) (nextNode ni lc) (prevNode ni lc)
+
+
+{-
+nextLinkCsv :: Link -> LinkCsv -> (LinkCsv, LinkCsv)
+nextLinkCsv l lc = V.partition (\_lwc -> destination (link _lwc) /= origin l) $ orgLinkCsv (destination l) lc
+
+prevLinkCsv :: Link -> LinkCsv -> (LinkCsv, LinkCsv)
+prevLinkCsv l lc = V.partition (\_lwc -> origin (link _lwc) /= destination l) $ destLinkCsv (origin l) lc
+-}
+
+nearbyLinkCsv :: Link -> LinkCsv -> (LinkCsv, LinkCsv)
+nearbyLinkCsv l =
+  V.partition
+    (\_lwc ->
+      l `isNextLink` (link _lwc) || (link _lwc) `isNextLink` l　|| (invertLink l) `isNextLink` (link _lwc) || (link _lwc) `isNextLink` (invertLink l))
 
 intersection :: LinkCsv -> NodeCsv -> (NodeCsv, NodeCsv)
-intersection lc = Map.partitionWithKey (\_n _ -> V.length (nextLinkCsv _n lc) > 1 || V.length (prevLinkCsv _n lc) > 1)
+intersection lc = V.partition (\_n -> nearbyNodeNum (nodeId _n) lc > 2)
 
 --異なる性質の道路の継ぎ目 (要cutDeadEnd処理済み)
 joint :: LinkCsv -> NodeCsv -> NodeCsv
-joint lc nc =　Map.filterWithKey (\_n _ -> (linkCond . V.head $ prevLinkCsv _n lc) /= (linkCond . V.head $ nextLinkCsv _n lc)) nc
+joint lc nc = V.filter (\_n -> Set.size ((Set.union `on` (V.foldr Set.insert Set.empty . (linkCond <$>))) (orgLinkCsv _n lc) (destLinkCsv _n lc)) > 1) nc
 
+
+{-
+  where
+    f n
+      | V.length plc == 1 && V.length nlc == 1 = (linkCond . V.head $ prevLinkCsv n lc) /= (linkCond . V.head $ nextLinkCsv n lc)
+      | otherwise = False
+-}
 
 simplifyNetworkCsv :: NetworkCsv -> NetworkCsv
 simplifyNetworkCsv (NetworkCsv lc_ nc_) =
-  NetworkCsv (longestLinkCsv $ g <$> (V.filter (\_lwc -> origin (link _lwc) `Map.member` nc) lc)) nc
+  NetworkCsv (longestLinkCsv $ g <$> (V.filter (\_lwc -> origin (link _lwc) `V.elem` (nodeId <$> nc)) lc)) nc
   where
     lc = cutDeadEnd lc_
     (i, rnc) = intersection lc nc_
@@ -183,8 +240,8 @@ simplifyNetworkCsv (NetworkCsv lc_ nc_) =
 
     f :: Link -> Link
     f l@((:->:) org dest _)
-      | dest `Map.member` nc = l
-      | otherwise = l <> f (link . V.head $ nextLinkCsv org lc)
+      | dest `Map.member` nc = trace "g" $ l
+      | otherwise = l <> f (link . V.head $ trace "f" $ V.filter ((`isNextLink` l) . link) lc)
     
     g :: LinkWithCond -> LinkWithCond
     g lwc@(LinkWithCond l cond s) = LinkWithCond (f l) cond s
