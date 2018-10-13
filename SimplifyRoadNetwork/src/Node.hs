@@ -26,8 +26,8 @@ instance FromNamedRecord NodeCsvOut where
   parseNamedRecord m =
     NodeCsvOut
       <$> m .: "node_id"
-      <*> m .: "lat"
-      <*> m .: "lon"
+      <*> m .: "latitude"
+      <*> m .: "longitude"
       <*> m .: "signal"
 
 decodeNodeCsv :: FilePath -> IO NodeCsv
@@ -62,7 +62,7 @@ makeNodeCsv =
 
 encodeNodeCsv :: NodeCsv -> String
 encodeNodeCsv nc = 
-  "node_id,lat,lon"
+  "node_id,latitude,longitude"
     <> Set.foldr
       (\(Node ni (Coordinates lat lon) _) str ->
         str
