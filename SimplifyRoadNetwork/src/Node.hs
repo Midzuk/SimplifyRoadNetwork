@@ -11,6 +11,8 @@ import           Data.Maybe           (isJust)
 import qualified Data.Text            as T
 import qualified Data.Vector          as V
 import qualified System.Directory     as Dir
+import qualified Data.Set             as Set
+
 
 --type Node = Int
 
@@ -45,7 +47,7 @@ data Coordinates = Coordinates { latitude :: Latitude, longitude :: Longitude } 
 type NodeId = Int
 data Node = Node { nodeId :: NodeId, coordinates :: Coordinates, signalOut :: SignalOut } deriving (Eq, Ord, Show)
 
-type NodeCsv = V.Vector Node
+type NodeCsv = Set.Set Node
 
 {-
 makeNodeCsv :: V.Vector NodeCsvOut -> NodeCsv
@@ -56,12 +58,12 @@ makeNodeCsv = foldr f Map.empty
 
 makeNodeCsv :: V.Vector NodeCsvOut -> NodeCsv
 makeNodeCsv =
-  ((\(NodeCsvOut ni lat lon so) -> Node { nodeId = ni, coordinates = Coordinates lat lon, signalOut = so }) <$>)
+  foldr ((\(NodeCsvOut ni lat lon so) _ns -> (`Set.insert` _ns) $ Node { nodeId = ni, coordinates = Coordinates lat lon, signalOut = so })) Set.empty
 
 encodeNodeCsv :: NodeCsv -> String
 encodeNodeCsv nc = 
   "node_id,lat,lon"
-    <> V.foldr
+    <> Set.foldr
       (\(Node ni (Coordinates lat lon) _) str ->
         str
           <> "\n"

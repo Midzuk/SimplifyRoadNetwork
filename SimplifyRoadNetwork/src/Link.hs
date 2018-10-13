@@ -14,6 +14,8 @@ import qualified Data.Text            as T
 import qualified Data.Vector          as V
 import qualified System.Directory     as Dir
 import           Data.Monoid
+import qualified Data.Set             as Set
+
 
 import           Node
 
@@ -220,7 +222,7 @@ makeLinkCsv nc = foldr f []
             , signal = f org }
 
         f ni =
-          case V.filter (\_n -> nodeId _n == ni) nc of
+          case Set.filter (\_n -> nodeId _n == ni) nc of
             [Node _ _ so]
               | so == Just "yes" -> Sum 1
               | otherwise -> Sum 0
