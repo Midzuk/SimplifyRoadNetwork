@@ -125,19 +125,19 @@ deadEnd l lc = not (any (\_lwc -> l `isNextLink` link _lwc) lc && any (\_lwc -> 
 --実験
 
 orgLinkCsv :: Node -> LinkCsv -> LinkCsv
-orgLinkCsv n = V.filter (\_lwc -> (origin $ link _lwc) == nodeId n)
+orgLinkCsv n = V.filter (\_lwc -> origin (link _lwc) == nodeId n)
 
 destLinkCsv :: Node -> LinkCsv -> LinkCsv
-destLinkCsv n = V.filter (\_lwc -> (destination $ link _lwc) == nodeId n)
+destLinkCsv n = V.filter (\_lwc -> destination (link _lwc) == nodeId n)
 
 nextNode :: Node -> LinkCsv -> Set.Set NodeId
-nextNode n lc = V.foldr Set.insert Set.empty $ (destination . link) <$> orgLinkCsv n lc
+nextNode n lc = V.foldr Set.insert Set.empty $ destination . link <$> orgLinkCsv n lc
 
 --isNextNode :: NodeId -> NodeId -> LinkCsv -> Bool
 --isNextNode ni2 ni1 lc = ni2 `V.elem` (nextNode ni1 lc)
 
 prevNode :: Node -> LinkCsv -> Set.Set NodeId
-prevNode n lc = V.foldr Set.insert Set.empty $ (origin . link) <$> destLinkCsv n lc
+prevNode n lc = V.foldr Set.insert Set.empty $ origin . link <$> destLinkCsv n lc
 
 --isPrevNode :: NodeId -> NodeId -> LinkCsv -> Bool
 --isPrevNode ni1 ni2 lc = ni1 `V.elem` (prevNode ni2 lc)
@@ -159,10 +159,9 @@ intersection lc = Set.partition (\_n -> nearbyNodeNum _n lc > 2)
 
 --異なる性質の道路の継ぎ目 (要cutDeadEnd処理済み)
 joint :: LinkCsv -> NodeCsv -> NodeCsv
-joint lc nc =
+joint lc =
   Set.filter
     (\_n -> Set.size ((Set.union `on` (V.foldr Set.insert Set.empty . (linkCond <$>))) (orgLinkCsv _n lc) (destLinkCsv _n lc)) == 2)
-    nc
 
 {-
 nearbyLinkCsv :: Link -> LinkCsv -> (LinkCsv, LinkCsv)
@@ -181,7 +180,7 @@ nearbyLinkCsv l =
 
 simplifyNetworkCsv :: NetworkCsv -> NetworkCsv
 simplifyNetworkCsv (NetworkCsv lc_ nc_) =
-  NetworkCsv (g <$> (V.filter (\_lwc -> origin (link _lwc) `Set.member` (Set.map nodeId nc0)) lc0)) nc0 --要修正
+  NetworkCsv (g <$> V.filter (\_lwc -> origin (link _lwc) `Set.member` Set.map nodeId nc0) lc0) nc0 --要修正
   where
     (lc0, nc__) = cutDeadEnd lc_ nc_
     (inc, rnc) = intersection lc0 nc__
@@ -190,7 +189,7 @@ simplifyNetworkCsv (NetworkCsv lc_ nc_) =
 
     f :: Link -> Link
     f l@((:->:) org dest _)
-      | dest `Set.member` (Set.map nodeId nc0) = l
+      | dest `Set.member` Set.map nodeId nc0 = l
       | otherwise = l <> f (link . V.head $ V.filter ((`isNextLink` l) . link) lc0)
     
     g :: LinkWithCond -> LinkWithCond
