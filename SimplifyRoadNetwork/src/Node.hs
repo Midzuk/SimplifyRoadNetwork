@@ -14,6 +14,7 @@ import qualified Data.Text            as T
 import qualified Data.Vector          as V
 import qualified System.Directory     as Dir
 import qualified Data.Set             as Set
+import Debug.Trace
 
 
 --type Node = Int
@@ -33,7 +34,7 @@ instance FromNamedRecord NodeCsvOut where
       <*> m .: "signal"
 
 decodeNodeCsv :: FilePath -> IO NodeCsv
-decodeNodeCsv fp = do
+decodeNodeCsv fp = trace "decodeNodeCsv" $ do
   cd <- Dir.getCurrentDirectory
   bs <- B.readFile (cd <> fp)
   let Right (_, ls) = decodeByName bs :: Either String (Header, V.Vector NodeCsvOut)

@@ -23,6 +23,8 @@ main = do
   --args <- getArgs
   --let [latOrg, lonOrg, latDest, lonDest] = read <$> args
 
+  print "aaaaa"
+
   nc <- decodeNodeCsv "/temporary/temp_nodes.csv"
   lc <- decodeLinkCsv "/temporary/temp_links.csv" nc
  
@@ -31,5 +33,6 @@ main = do
   let snwc@(NetworkCsv slc snc) = simplifyNetworkCsv nwc
 
   cd <- Dir.getCurrentDirectory
+
   writeFile (cd <> "/output/simple_nodes.csv") $ encodeNodeCsv snc
   writeFile (cd <> "/output/simple_links.csv") $ encodeLinkCsv slc

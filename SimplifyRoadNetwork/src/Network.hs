@@ -36,7 +36,7 @@ uncons v = (V.head v, V.tail v)
 
 
 longestLinkCsv :: LinkCsv -> LinkCsv
-longestLinkCsv lc =
+longestLinkCsv lc = trace "longestLinkCsv" $ 
   go lc []
   where
     go (V.null -> True) lcs =
@@ -49,7 +49,7 @@ longestLinkCsv lc =
 
 
 totalDistance :: LinkCsv -> Double
-totalDistance = foldr (\_lwc total -> (+) total (distance $ link _lwc)) 0 -- 引数おかしい?
+totalDistance = trace "totalDistance" $ foldr (\_lwc total -> (+) total (distance $ link _lwc)) 0 -- 引数おかしい?
 
 
 
@@ -63,7 +63,7 @@ totalDistance = foldr (\_lwc total -> (+) total (distance $ link _lwc)) 0 -- 引
 
 
 cutDeadEnd :: LinkCsv -> NodeCsv -> (LinkCsv, NodeCsv)
-cutDeadEnd (longestLinkCsv -> lc_) nc_ = (lc', nc')
+cutDeadEnd (longestLinkCsv -> lc_) nc_ = trace "cutDeadEnd" $ (lc', nc')
   where
     (dlc_, rlc_) = V.partition ((`deadEnd` lc_) . link) lc_
     (nlc0, rlc0) = V.partition (\_lwc -> any ((`isNextLink` link _lwc) . link) dlc_ || any ((link _lwc `isNextLink`) . link) dlc_) rlc_
@@ -121,31 +121,31 @@ deadEnd n lc = nearbyNodeNum n lc < 2
 -}
 
 deadEnd :: Link -> LinkCsv -> Bool
-deadEnd l lc = not (any (\_lwc -> l `isNextLink` link _lwc) lc && any (\_lwc -> link _lwc `isNextLink` l) lc)
+deadEnd l lc = trace "deadEnd" $ not (any (\_lwc -> l `isNextLink` link _lwc) lc && any (\_lwc -> link _lwc `isNextLink` l) lc)
 
 
 --実験
 
 orgLinkCsv :: Node -> LinkCsv -> LinkCsv
-orgLinkCsv n = V.filter (\_lwc -> origin (link _lwc) == nodeId n)
+orgLinkCsv n = trace "orgLinkCsv" $ V.filter (\_lwc -> origin (link _lwc) == nodeId n)
 
 destLinkCsv :: Node -> LinkCsv -> LinkCsv
-destLinkCsv n = V.filter (\_lwc -> destination (link _lwc) == nodeId n)
+destLinkCsv n = trace "destLinkCsv" $ V.filter (\_lwc -> destination (link _lwc) == nodeId n)
 
 nextNode :: Node -> LinkCsv -> Set.Set NodeId
-nextNode n lc = V.foldr Set.insert Set.empty $ destination . link <$> orgLinkCsv n lc
+nextNode n lc = trace "nextNode" $ V.foldr Set.insert Set.empty $ destination . link <$> orgLinkCsv n lc
 
 --isNextNode :: NodeId -> NodeId -> LinkCsv -> Bool
 --isNextNode ni2 ni1 lc = ni2 `V.elem` (nextNode ni1 lc)
 
 prevNode :: Node -> LinkCsv -> Set.Set NodeId
-prevNode n lc = V.foldr Set.insert Set.empty $ origin . link <$> destLinkCsv n lc
+prevNode n lc = trace "prevNode" $ V.foldr Set.insert Set.empty $ origin . link <$> destLinkCsv n lc
 
 --isPrevNode :: NodeId -> NodeId -> LinkCsv -> Bool
 --isPrevNode ni1 ni2 lc = ni1 `V.elem` (prevNode ni2 lc)
 
 nearbyNodeNum :: Node -> LinkCsv -> Int
-nearbyNodeNum n lc = Set.size $ nextNode n lc <> prevNode n lc
+nearbyNodeNum n lc = trace "nearbyNodeNum" $ Set.size $ nextNode n lc <> prevNode n lc
 
 
 {-
@@ -157,12 +157,12 @@ prevLinkCsv l lc = V.partition (\_lwc -> origin (link _lwc) /= destination l) $ 
 -}
 
 intersection :: LinkCsv -> NodeCsv -> (NodeCsv, NodeCsv)
-intersection lc = Set.partition (\_n -> nearbyNodeNum _n lc > 2)
+intersection lc = trace "intersection" $ Set.partition (\_n -> nearbyNodeNum _n lc > 2)
 
 --異なる性質の道路の継ぎ目 (要cutDeadEnd処理済み)
 joint :: LinkCsv -> NodeCsv -> NodeCsv
 joint lc =
-  Set.filter
+  trace "joint" $ Set.filter
     (\_n -> Set.size ((Set.union `on` (V.foldr Set.insert Set.empty . (linkCond <$>))) (orgLinkCsv _n lc) (destLinkCsv _n lc)) == 2)
 
 {-
@@ -182,11 +182,11 @@ nearbyLinkCsv l =
 
 simplifyNetworkCsv :: NetworkCsv -> NetworkCsv
 simplifyNetworkCsv (NetworkCsv lc_ nc_) =
-  NetworkCsv (g <$> V.filter (\_lwc -> origin (link _lwc) `Set.member` Set.map nodeId nc0) lc0) nc0 --要修正
+  trace "simplifyNetworkCsv" $ NetworkCsv (g <$> V.filter (\_lwc -> origin (link _lwc) `Set.member` Set.map nodeId nc0) lc0) nc0 --要修正
   where
-    (lc0, nc__) = cutDeadEnd lc_ nc_
-    (inc, rnc) = intersection lc0 nc__
-    jnc = joint lc0 rnc
+    (lc0, nc__) = trace "cutDeadEnd" $ cutDeadEnd lc_ nc_
+    (inc, rnc) = trace "intersection" $ intersection lc0 nc__
+    jnc = trace "joint" $ joint lc0 rnc
     nc0 = inc <> jnc
 
     f :: Link -> Link

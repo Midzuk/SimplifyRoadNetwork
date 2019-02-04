@@ -17,6 +17,7 @@ import qualified Data.Vector          as V
 import qualified System.Directory     as Dir
 import           Data.Monoid
 import qualified Data.Set             as Set
+import Debug.Trace
 
 
 import           Node
@@ -192,7 +193,7 @@ instance FromNamedRecord LinkCsvOut where
 --dist, highway, oneway, max_speed, lanes, width, bridge, tunnel, surface, service, foot, bicycle
 
 decodeLinkCsv :: FilePath -> NodeCsv -> IO LinkCsv
-decodeLinkCsv fp nc = do
+decodeLinkCsv fp nc = trace "decodeLinkCsv" $ do
   cd <- Dir.getCurrentDirectory
   bs <- B.readFile (cd <> fp)
   let Right (_, ls) = decodeByName bs :: Either String (Header, V.Vector LinkCsvOut)
