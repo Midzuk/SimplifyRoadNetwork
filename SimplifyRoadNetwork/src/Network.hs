@@ -3,6 +3,8 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE TypeOperators   #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE Strict #-}
+{-# LANGUAGE StrictData #-}
 
 
 module Network where
@@ -47,7 +49,7 @@ longestLinkCsv lc =
 
 
 totalDistance :: LinkCsv -> Double
-totalDistance = foldr (\_lwc total -> (+) total (distance $ link _lwc)) 0
+totalDistance = foldr (\_lwc total -> (+) total (distance $ link _lwc)) 0 -- 引数おかしい?
 
 
 

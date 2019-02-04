@@ -1,5 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Strict #-}
+{-# LANGUAGE StrictData #-}
 
 module Node where
 
