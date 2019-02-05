@@ -33,12 +33,12 @@ instance FromNamedRecord NodeCsvOut where
       <*> m .: "latitude"
       <*> m .: "signal"
 
-decodeNodeCsv :: FilePath -> IO NodeCsv
+decodeNodeCsv :: FilePath -> IO Nodes
 decodeNodeCsv fp = trace "decodeNodeCsv" $ do
   cd <- Dir.getCurrentDirectory
   bs <- B.readFile (cd <> fp)
   let Right (_, ls) = decodeByName bs :: Either String (Header, V.Vector NodeCsvOut)
-  return $ makeNodeCsv ls
+  return $ makeNodes ls
 
 -- data NodeCond = NodeCond { latitude :: Latitude, longitude :: Longitude, signalOut :: SignalOut } deriving (Eq, Show)
 
@@ -51,11 +51,12 @@ type NodeId = Int
 type Signal = Bool
 data NodeCond = NodeCond { coordinates :: Coordinates, signal :: Signal }
 
+type Nodes = Map.Map NodeId NodeCond
+
 -- type Node = Int
 -- type NodeId = Int
 -- data Node = Node { nodeId :: NodeId, coordinates :: Coordinates, signalOut :: SignalOut } deriving (Eq, Ord, Show)
 
-type NodeCsv = Set.Set Node
 
 {-
 makeNodeCsv :: V.Vector NodeCsvOut -> NodeCsv
@@ -64,9 +65,12 @@ makeNodeCsv = foldr f Map.empty
     f (NodeCsvOut n lat lon signalOut) = Map.insert n (NodeCond lat lon signalOut)
 -}
 
-makeNodeCsv :: V.Vector NodeCsvOut -> NodeCsv
-makeNodeCsv =
-  foldr ((\(NodeCsvOut ni lat lon so) _ns -> (`Set.insert` _ns) $ Node { nodeId = ni, coordinates = Coordinates lat lon, signalOut = so })) Set.empty
+makeNodes :: V.Vector NodeCsvOut -> Nodes
+makeNodes =
+  undefined -- foldr ((\(NodeCsvOut ni lat lon so) _ns -> (`Set.insert` _ns) $ undefined
+  where
+    f (Just "yes") = True
+    f _ = False
 
 encodeNodeCsv :: NodeCsv -> String
 encodeNodeCsv nc = 
