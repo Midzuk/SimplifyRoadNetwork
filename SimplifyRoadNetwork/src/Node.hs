@@ -66,20 +66,20 @@ makeNodeCsv = foldr f Map.empty
 -}
 
 makeNodes :: V.Vector NodeCsvOut -> Nodes
-makeNodes =
-  undefined -- foldr ((\(NodeCsvOut ni lat lon so) _ns -> (`Set.insert` _ns) $ undefined
+makeNodes nco =
+  foldr (\(NodeCsvOut ni lon lat so) _ns -> Map.insert ni (NodeCond (Coordinates lon lat) $ f so)) Map.empty nco --ここまで
   where
     f (Just "yes") = True
     f _ = False
 
 encodeNodeCsv :: NodeCsv -> String
 encodeNodeCsv nc = 
-  "node_id,latitude,longitude"
+  "node_id,longitude,latitude"
     <> Set.foldr
-      (\(Node ni (Coordinates lat lon) _) str ->
+      (\(Node ni (Coordinates lon lat) _) str ->
         str
           <> "\n"
           <> show ni <> ","
-          <> show lat <> ","
-          <> show lon)
+          <> show lon <> ","
+          <> show lat)
     "" nc
