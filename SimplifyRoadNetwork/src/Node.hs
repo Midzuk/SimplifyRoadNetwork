@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+-- {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE StrictData #-}
@@ -17,20 +17,20 @@ import qualified Data.Set             as Set
 import Debug.Trace
 
 
---type Node = Int
 
-type Latitude = Double
+-- lon lat
 type Longitude = Double
+type Latitude = Double
 type SignalOut = Maybe T.Text
 
-data NodeCsvOut = NodeCsvOut NodeId Latitude Longitude SignalOut deriving Show
+data NodeCsvOut = NodeCsvOut NodeId Longitude Latitude SignalOut deriving Show
 
 instance FromNamedRecord NodeCsvOut where
   parseNamedRecord m =
     NodeCsvOut
       <$> m .: "node_id"
-      <*> m .: "latitude"
       <*> m .: "longitude"
+      <*> m .: "latitude"
       <*> m .: "signal"
 
 decodeNodeCsv :: FilePath -> IO NodeCsv
@@ -40,15 +40,20 @@ decodeNodeCsv fp = trace "decodeNodeCsv" $ do
   let Right (_, ls) = decodeByName bs :: Either String (Header, V.Vector NodeCsvOut)
   return $ makeNodeCsv ls
 
---data NodeCond = NodeCond { latitude :: Latitude, longitude :: Longitude, signalOut :: SignalOut } deriving (Eq, Show)
+-- data NodeCond = NodeCond { latitude :: Latitude, longitude :: Longitude, signalOut :: SignalOut } deriving (Eq, Show)
 
---type NodeCsv = Map.Map Node NodeCond
+-- type NodeCsv = Map.Map Node NodeCond
 
-data Coordinates = Coordinates { latitude :: Latitude, longitude :: Longitude } deriving (Eq, Show, Ord)
+data Coordinates = Coordinates { latitude :: Latitude, longitude :: Longitude }
+  deriving (Eq, Show, Ord)
 
---type Node = Int
 type NodeId = Int
-data Node = Node { nodeId :: NodeId, coordinates :: Coordinates, signalOut :: SignalOut } deriving (Eq, Ord, Show)
+type Signal = Bool
+data NodeCond = NodeCond { coordinates :: Coordinates, signal :: Signal }
+
+-- type Node = Int
+-- type NodeId = Int
+-- data Node = Node { nodeId :: NodeId, coordinates :: Coordinates, signalOut :: SignalOut } deriving (Eq, Ord, Show)
 
 type NodeCsv = Set.Set Node
 

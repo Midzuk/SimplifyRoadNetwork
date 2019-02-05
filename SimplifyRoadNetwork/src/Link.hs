@@ -28,7 +28,7 @@ import           Node
 --type Cost = Double
 type Distance = Double
 
-data Link = (:->:) { origin :: NodeId , destination :: NodeId, distance :: Distance } deriving (Eq, Ord, Show)
+data Link = (:->:) { origin :: NodeId, destination :: NodeId, distance :: Distance } deriving (Eq, Ord, Show)
 infixr 5 :->:
 
 {-
