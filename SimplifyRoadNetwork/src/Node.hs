@@ -23,11 +23,11 @@ type Longitude = Double
 type Latitude = Double
 type SignalOut = Maybe T.Text
 
-data NodeCsvOut = NodeCsvOut NodeId Longitude Latitude SignalOut deriving Show
+data NodeCsv = NodeCsv Node Longitude Latitude SignalOut deriving Show
 
-instance FromNamedRecord NodeCsvOut where
+instance FromNamedRecord NodeCsv where
   parseNamedRecord m =
-    NodeCsvOut
+    NodeCsv
       <$> m .: "node_id"
       <*> m .: "longitude"
       <*> m .: "latitude"
@@ -37,7 +37,7 @@ decodeNodeCsv :: FilePath -> IO Nodes
 decodeNodeCsv fp = trace "decodeNodeCsv" $ do
   cd <- Dir.getCurrentDirectory
   bs <- B.readFile (cd <> fp)
-  let Right (_, ls) = decodeByName bs :: Either String (Header, V.Vector NodeCsvOut)
+  let Right (_, ls) = decodeByName bs :: Either String (Header, V.Vector NodeCsv)
   return $ makeNodes ls
 
 -- data NodeCond = NodeCond { latitude :: Latitude, longitude :: Longitude, signalOut :: SignalOut } deriving (Eq, Show)
@@ -47,15 +47,11 @@ decodeNodeCsv fp = trace "decodeNodeCsv" $ do
 data Coordinates = Coordinates { latitude :: Latitude, longitude :: Longitude }
   deriving (Eq, Show, Ord)
 
-type NodeId = Int
+type Node = Int
 type Signal = Bool
 data NodeCond = NodeCond { coordinates :: Coordinates, signal :: Signal }
 
-type Nodes = Map.Map NodeId NodeCond
-
--- type Node = Int
--- type NodeId = Int
--- data Node = Node { nodeId :: NodeId, coordinates :: Coordinates, signalOut :: SignalOut } deriving (Eq, Ord, Show)
+type Nodes = Map.Map Node NodeCond
 
 
 {-
@@ -65,21 +61,22 @@ makeNodeCsv = foldr f Map.empty
     f (NodeCsvOut n lat lon signalOut) = Map.insert n (NodeCond lat lon signalOut)
 -}
 
-makeNodes :: V.Vector NodeCsvOut -> Nodes
+makeNodes :: V.Vector NodeCsv -> Nodes
 makeNodes nco =
-  foldr (\(NodeCsvOut ni lon lat so) _ns -> Map.insert ni (NodeCond (Coordinates lon lat) $ f so)) Map.empty nco --ここまで
+  foldr (\(NodeCsv n lon lat so) ns -> Map.insert n (NodeCond (Coordinates lon lat) $ f so) ns) Map.empty nco --ここまで
   where
     f (Just "yes") = True
     f _ = False
 
-encodeNodeCsv :: NodeCsv -> String
-encodeNodeCsv nc = 
-  "node_id,longitude,latitude"
-    <> Set.foldr
-      (\(Node ni (Coordinates lon lat) _) str ->
+encodeNodes :: Nodes -> String
+encodeNodes nc = 
+  "node,longitude,latitude,signal"
+    <> Map.foldrWithKey
+      (\n (NodeCond (Coordinates lon lat) s) str ->
         str
           <> "\n"
-          <> show ni <> ","
+          <> show n <> ","
           <> show lon <> ","
-          <> show lat)
+          <> show lat <> ","
+          <> show s)
     "" nc
