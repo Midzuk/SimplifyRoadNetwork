@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- {-# LANGUAGE ViewPatterns #-}
@@ -10,7 +9,8 @@ module Link where
 import qualified Data.ByteString.Lazy as B
 import           Data.Csv             (FromNamedRecord (..), Header,
                                        decodeByName, (.:))
-import qualified Data.Map.Lazy        as Map
+import qualified Data.Map.Strict      as Map
+
 import           Data.Maybe           (isJust)
 import qualified Data.Text            as T
 import qualified Data.Vector          as V
@@ -38,11 +38,11 @@ infixr 5 :->:
 
 instance Semigroup Link where
   (org1 :->: dest1) <> (org2 :->: dest2)
-    | dest1 == org2 && org1 /= dest2 = org1 :->: dest2
+    | dest1 == org2 = org1 :->: dest2
     | otherwise = error "Semigroup Link Error."
 
-isNextLink :: Link -> Link -> Bool
-(org2 :->: dest2) `isNextLink` (org1 :->: dest1) = dest1 == org2 && org1 /= dest2
+-- isNextLink :: Link -> Link -> Bool
+-- (org2 :->: dest2) `isNextLink` (org1 :->: dest1) = dest1 == org2 && org1 /= dest2
 
 data LinkCond =
   LinkCond
@@ -54,8 +54,12 @@ data LinkCond =
 instance Semigroup LinkCond where
   LinkCond d1 lc1 <> LinkCond d2 lc2
     | lc1 == lc2 = LinkCond (d1 + d2) lc1
+    | otherwise = error "Semigroup LinkCond Error."
 
-type Links = Map.Map Link LinkCond
+type Links =
+  ( Map.Map Node (V.Vector Node) -- 隣り合うNode
+  , Map.Map Link LinkCond
+  )
 
 type Origin = Node
 type Destination = Node
@@ -80,8 +84,8 @@ data LinkCsv =
     Origin
     Destination
     Distance
-    Highway
     Oneway
+    Highway
     MaxSpeed
     Lanes
     Width
@@ -93,7 +97,7 @@ data LinkCsv =
     Bicycle
   deriving (Show)
 
-type Graph = V.Vector Node
+-- type Graph = V.Vector Node
 
 
 {-
@@ -109,8 +113,8 @@ instance FromNamedRecord LinkCsv where
       <$> m .: "node_id_org"
       <*> m .: "node_id_dest"
       <*> m .: "distance"
-      <*> m .: "highway"
       <*> m .: "oneway"
+      <*> m .: "highway"
       <*> m .: "max_speed"
       <*> m .: "lanes"
       <*> m .: "width"
@@ -130,27 +134,46 @@ decodeLinkCsv fp = trace "decodeLinkCsv" $ do
   return $ makeLinks ls
 
 makeLinks :: V.Vector LinkCsv -> Links
-makeLinks lco = V.foldr f Map.empty lco
+makeLinks lco = foldr f (Map.empty, Map.empty) lco
   where
-    f (LinkCsv org dest dist highway oneway maxSpeed lanes width bridge tunnel surface service foot bicycle)
+    f (LinkCsv org dest dist oneway highway maxSpeed lanes width bridge tunnel surface service foot bicycle) (mn, ml)
       | oneway == Just "yes" =
-        Map.insert
-          (org :->: dest)
-          (LinkCond dist (highway, maxSpeed, lanes, width, bridge, tunnel, surface, service, foot, bicycle))
+        ( ( Map.insertWith (<>) org (V.singleton dest)
+          . Map.insertWith (<>) dest (V.singleton org)
+          )
+            mn
+        , Map.insert 
+            (org :->: dest)
+            (LinkCond dist (highway, maxSpeed, lanes, width, bridge, tunnel, surface, service, foot, bicycle))
+            ml
+        )
 
       | oneway == Just "-1" =
-        Map.insert
-          (dest :->: org)
-          (LinkCond dist (highway, maxSpeed, lanes, width, bridge, tunnel, surface, service, foot, bicycle))
-
-      | otherwise =
-        Map.insert
-          (org :->: dest)
-          (LinkCond dist (highway, maxSpeed, lanes, width, bridge, tunnel, surface, service, foot, bicycle))
-        .
-          Map.insert
+        ( ( Map.insertWith (<>) org (V.singleton dest)
+          . Map.insertWith (<>) dest (V.singleton org)
+          )
+            mn
+        ,  Map.insert
             (dest :->: org)
             (LinkCond dist (highway, maxSpeed, lanes, width, bridge, tunnel, surface, service, foot, bicycle))
+            ml
+        )
+
+      | otherwise =
+        ( ( Map.insertWith (<>) org (V.singleton dest)
+          . Map.insertWith (<>) dest (V.singleton org)
+          )
+            mn
+        , ( Map.insert
+              (org :->: dest)
+              (LinkCond dist (highway, maxSpeed, lanes, width, bridge, tunnel, surface, service, foot, bicycle))
+            .
+            Map.insert
+              (dest :->: org)
+              (LinkCond dist (highway, maxSpeed, lanes, width, bridge, tunnel, surface, service, foot, bicycle))
+          )
+          ml
+        )
 
 {-
 encodeLinks :: Links -> String

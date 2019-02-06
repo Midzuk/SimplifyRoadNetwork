@@ -3,17 +3,16 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE TypeOperators   #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE Strict #-}
-{-# LANGUAGE StrictData #-}
+-- {-# LANGUAGE Strict #-}
+-- {-# LANGUAGE StrictData #-}
 
 
 module Network where
 
 import           Control.Monad.State.Strict (State, evalState, execState,
                                              runState, state, put, get)            
-import qualified Data.Map.Lazy              as Map
+import qualified Data.Map.Strict            as Map
 import qualified Data.Vector                as V
---import           Network
 import           Data.Maybe                 (fromJust)
 import qualified Data.Set                   as Set
 import           Data.Monoid

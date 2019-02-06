@@ -1,7 +1,6 @@
--- {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE Strict #-}
-{-# LANGUAGE StrictData #-}
+-- {-# LANGUAGE Strict #-}
+-- {-# LANGUAGE StrictData #-}
 
 module Node where
 
@@ -23,7 +22,13 @@ type Longitude = Double
 type Latitude = Double
 type SignalOut = Maybe T.Text
 
-data NodeCsv = NodeCsv Node Longitude Latitude SignalOut deriving Show
+data NodeCsv =
+  NodeCsv
+    Node
+    Longitude
+    Latitude
+    SignalOut
+  deriving Show
 
 instance FromNamedRecord NodeCsv where
   parseNamedRecord m =
@@ -44,7 +49,11 @@ decodeNodeCsv fp = trace "decodeNodeCsv" $ do
 
 -- type NodeCsv = Map.Map Node NodeCond
 
-data Coordinates = Coordinates { latitude :: Latitude, longitude :: Longitude }
+data Coordinates =
+  Coordinates
+    { longitude :: Longitude
+    , latitude :: Latitude
+    }
   deriving (Eq, Show, Ord)
 
 type Node = Int
@@ -63,7 +72,7 @@ makeNodeCsv = foldr f Map.empty
 
 makeNodes :: V.Vector NodeCsv -> Nodes
 makeNodes nco =
-  foldr (\(NodeCsv n lon lat so) ns -> Map.insert n (NodeCond (Coordinates lon lat) $ f so) ns) Map.empty nco --ここまで
+  foldr (\(NodeCsv n lon lat so) ns -> Map.insert n (NodeCond (Coordinates lon lat) $ f so) ns) Map.empty nco
   where
     f (Just "yes") = True
     f _ = False
@@ -72,11 +81,12 @@ encodeNodes :: Nodes -> String
 encodeNodes nc = 
   "node,longitude,latitude,signal"
     <> Map.foldrWithKey
-      (\n (NodeCond (Coordinates lon lat) s) str ->
-        str
-          <> "\n"
-          <> show n <> ","
-          <> show lon <> ","
-          <> show lat <> ","
-          <> show s)
+      ( \n (NodeCond (Coordinates lon lat) s) str ->
+          str
+            <> "\n"
+            <> show n <> ","
+            <> show lon <> ","
+            <> show lat <> ","
+            <> show s
+      )
     "" nc
