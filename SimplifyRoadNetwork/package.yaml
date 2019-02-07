@@ -29,6 +29,7 @@ dependencies:
 - text
 - directory
 - either
+- bimap
 
 library:
   source-dirs: src
