@@ -26,7 +26,8 @@ import           Node
 import Debug.Trace
 
 -- data NetworkCsv = NetworkCsv LinkCsv NodeCsv deriving (Show)
-type Graph = (Nodes, Links)
+type ToLinks = Links
+type Graph = (Nodes, Links, ToLinks)
 
 makeGroups :: Graph -> V.Vector Graph 
 makeGroups (nodes, links) = undefined
@@ -36,6 +37,13 @@ makeGroups (nodes, links) = undefined
 
     f :: Node -> Graph -> Graph
     f n (_nodes, _links) = undefined
+
+    to :: Graph -> Graph -> Bool
+    (ns1, ls1, tls1) `to` (ns2, ls2, tls2) =
+      undefined
+
+    from :: Graph -> Graph -> Bool
+    g1 `from` g2 = undefined
 
 -- uncons :: V.Vector a -> (a, V.Vector a)
 -- uncons v = (V.head v, V.tail v)

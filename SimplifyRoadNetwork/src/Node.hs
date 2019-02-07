@@ -62,7 +62,6 @@ data NodeCond = NodeCond { coordinates :: Coordinates, signal :: Signal }
 
 type Nodes = Map.Map Node NodeCond
 
-
 {-
 makeNodeCsv :: V.Vector NodeCsvOut -> NodeCsv
 makeNodeCsv = foldr f Map.empty
