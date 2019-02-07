@@ -25,15 +25,23 @@ import           Node
 
 import Debug.Trace
 
+-- data NetworkCsv = NetworkCsv LinkCsv NodeCsv deriving (Show)
+type Graph = (Nodes, Links)
 
-data NetworkCsv = NetworkCsv LinkCsv NodeCsv deriving (Show)
+makeGroups :: Graph -> V.Vector Graph 
+makeGroups (nodes, links) = undefined
+  where
+    ns = Map.keysSet nodes
+    undefined
+
+    f :: Node -> Graph -> Graph
+    f n (_nodes, _links) = undefined
+
+-- uncons :: V.Vector a -> (a, V.Vector a)
+-- uncons v = (V.head v, V.tail v)
 
 
-
-uncons :: V.Vector a -> (a, V.Vector a)
-uncons v = (V.head v, V.tail v)
-
-
+{-
 longestLinkCsv :: LinkCsv -> LinkCsv
 longestLinkCsv lc = trace "longestLinkCsv" $ 
   go lc []
@@ -49,7 +57,7 @@ longestLinkCsv lc = trace "longestLinkCsv" $
 
 totalDistance :: LinkCsv -> Double
 totalDistance = trace "totalDistance" $ foldr (\_lwc total -> (+) total (distance $ link _lwc)) 0 -- 引数おかしい?
-
+-}
 
 
 --data Path = Path { graph :: Graph, cost :: Cost } deriving Show
@@ -60,7 +68,10 @@ totalDistance = trace "totalDistance" $ foldr (\_lwc total -> (+) total (distanc
 --data NodeCond = NodeCond { latitude :: Latitude, longitude :: Longitude, signalOut :: SignalOut } deriving (Eq, Show)
 --type NodeCsv = Map.Map Node NodeCond
 
+cutDeadEnd :: Nodes -> Links -> (Nodes, Links)
+cutDeadEnd = undefined
 
+{-
 cutDeadEnd :: LinkCsv -> NodeCsv -> (LinkCsv, NodeCsv)
 cutDeadEnd (longestLinkCsv -> lc_) nc_ = trace "cutDeadEnd" $ (lc', nc')
   where
@@ -83,6 +94,7 @@ cutDeadEnd (longestLinkCsv -> lc_) nc_ = trace "cutDeadEnd" $ (lc', nc')
           V.partition
             (\_lwc -> any ((`isNextLink` link _lwc) . link) dlc__ || any ((link _lwc `isNextLink`) . link) dlc__)
             (rlc <> rlc__)
+-}
 
 {-
 cutDeadEnd :: LinkCsv -> NodeCsv -> (LinkCsv, NodeCsv)
