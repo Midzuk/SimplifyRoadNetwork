@@ -7,13 +7,14 @@ module Node where
 import qualified Data.ByteString.Lazy as B
 import           Data.Csv             (FromNamedRecord (..), Header,
                                        decodeByName, (.:))
-import qualified Data.Map.Strict      as Map
+import qualified Data.Map.Strict      as M
 import           Data.Maybe           (isJust)
 import qualified Data.Text            as T
 import qualified Data.Vector          as V
 import qualified System.Directory     as Dir
 import qualified Data.Set             as Set
-import Debug.Trace
+import           Debug.Trace
+-- import qualified Data.Bimap           as BM
 
 
 
@@ -58,9 +59,14 @@ data Coordinates =
 
 type Node = Int
 type Signal = Bool
-data NodeCond = NodeCond { coordinates :: Coordinates, signal :: Signal }
+data NodeCond =
+  NodeCond
+    { coordinates :: Coordinates
+    , signal :: Signal
+    }
+  deriving (Eq, Show, Ord)
 
-type Nodes = Map.Map Node NodeCond
+type Nodes = M.Map Node NodeCond
 
 {-
 makeNodeCsv :: V.Vector NodeCsvOut -> NodeCsv
@@ -71,7 +77,7 @@ makeNodeCsv = foldr f Map.empty
 
 makeNodes :: V.Vector NodeCsv -> Nodes
 makeNodes nco =
-  foldr (\(NodeCsv n lon lat so) ns -> Map.insert n (NodeCond (Coordinates lon lat) $ f so) ns) Map.empty nco
+  foldr (\(NodeCsv n lon lat so) ns -> M.insert n (NodeCond (Coordinates lon lat) $ f so) ns) M.empty nco
   where
     f (Just "yes") = True
     f _ = False
@@ -79,7 +85,7 @@ makeNodes nco =
 encodeNodes :: Nodes -> String
 encodeNodes nc = 
   "node,longitude,latitude,signal"
-    <> Map.foldrWithKey
+    <> M.foldrWithKey
       ( \n (NodeCond (Coordinates lon lat) s) str ->
           str
             <> "\n"

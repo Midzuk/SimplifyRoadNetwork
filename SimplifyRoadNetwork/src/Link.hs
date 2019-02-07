@@ -9,7 +9,7 @@ module Link where
 import qualified Data.ByteString.Lazy as B
 import           Data.Csv             (FromNamedRecord (..), Header,
                                        decodeByName, (.:))
-import qualified Data.Map.Strict      as Map
+import qualified Data.Map.Strict      as M
 
 import           Data.Maybe           (isJust)
 import qualified Data.Text            as T
@@ -55,8 +55,8 @@ instance Semigroup LinkCond where
     | otherwise = error "Semigroup LinkCond Error."
 
 type Links =
-  ( Map.Map Node (V.Vector Node) -- 隣り合うNode
-  , Map.Map Link LinkCond
+  ( M.Map Node [Node]
+  , M.Map Link LinkCond
   )
 
 type Origin = Node
@@ -132,45 +132,40 @@ decodeLinkCsv fp = trace "decodeLinkCsv" $ do
   return $ makeLinks ls
 
 makeLinks :: V.Vector LinkCsv -> Links
-makeLinks lco = foldr f (Map.empty, Map.empty) lco
+makeLinks lco = foldr f (M.empty, M.empty) lco
   where
     f (LinkCsv org dest dist oneway highway maxSpeed lanes width bridge tunnel surface service foot bicycle) (mn, ml)
       | oneway == Just "yes" =
-        ( ( Map.insertWith (<>) org (V.singleton dest)
-          . Map.insertWith (<>) dest (V.singleton org)
-          )
+        ( M.insertWith (<>) org [dest]
             mn
-        , Map.insert 
+        , M.insert 
             (org :->: dest)
             (LinkCond dist (highway, maxSpeed, lanes, width, bridge, tunnel, surface, service, foot, bicycle))
             ml
         )
 
       | oneway == Just "-1" =
-        ( ( Map.insertWith (<>) org (V.singleton dest)
-          . Map.insertWith (<>) dest (V.singleton org)
-          )
+        ( M.insertWith (<>) dest [org]
             mn
-        ,  Map.insert
+        ,  M.insert
             (dest :->: org)
             (LinkCond dist (highway, maxSpeed, lanes, width, bridge, tunnel, surface, service, foot, bicycle))
             ml
         )
 
       | otherwise =
-        ( ( Map.insertWith (<>) org (V.singleton dest)
-          . Map.insertWith (<>) dest (V.singleton org)
+        ( ( M.insertWith (<>) org [dest]
+          . M.insertWith (<>) dest [org]
           )
             mn
-        , ( Map.insert
+        , ( M.insert
               (org :->: dest)
               (LinkCond dist (highway, maxSpeed, lanes, width, bridge, tunnel, surface, service, foot, bicycle))
-            .
-            Map.insert
+          . M.insert
               (dest :->: org)
               (LinkCond dist (highway, maxSpeed, lanes, width, bridge, tunnel, surface, service, foot, bicycle))
           )
-          ml
+            ml
         )
 
 {-

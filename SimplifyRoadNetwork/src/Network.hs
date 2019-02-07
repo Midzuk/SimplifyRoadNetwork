@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiWayIf      #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE TypeOperators   #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns    #-}
 -- {-# LANGUAGE Strict #-}
 -- {-# LANGUAGE StrictData #-}
 
@@ -11,10 +11,10 @@ module Network where
 
 import           Control.Monad.State.Strict (State, evalState, execState,
                                              runState, state, put, get)            
-import qualified Data.Map.Strict            as Map
+import qualified Data.Map.Strict            as M
 import qualified Data.Vector                as V
 import           Data.Maybe                 (fromJust)
-import qualified Data.Set                   as Set
+import qualified Data.Set                   as S
 import           Data.Monoid
 import           Data.Either.Combinators    (rightToMaybe)
 import           Data.Function
@@ -23,27 +23,51 @@ import           Control.Monad
 import           Link                       
 import           Node           
 
-import Debug.Trace
+import　　　　　　 Debug.Trace
 
 -- data NetworkCsv = NetworkCsv LinkCsv NodeCsv deriving (Show)
-type ToLinks = Links
-type Graph = (Nodes, Links, ToLinks)
+type LinksIn = Links
+type LinksOut = Links
+type Graph = (Nodes, LinksIn, LinksOut)
 
 makeGroups :: Graph -> V.Vector Graph 
 makeGroups (nodes, links) = undefined
   where
-    ns = Map.keysSet nodes
+    ns = M.keysSet nodes
     undefined
 
     f :: Node -> Graph -> Graph
     f n (_nodes, _links) = undefined
 
+    to :: Graph -> Graph -> [Link]
+    (_, _, (nns ,_)) `to` (ns, _, _) =
+      M.foldrWithKey (\org [dest] -> (<>) ((org :->:) <$> [dest])) [] (filter (`elem` M.keys ns) <$> nns)
+
+    -- foldrWithKey :: (k -> a -> b -> b) -> b -> Map k a -> b
+
+    {-
+    from :: Graph -> Graph -> [Link]
+    (ns, _, _) `from` (_, _, (nns ,_)) =
+      M.foldrWithKey (\org [dest] -> (<>) ((org :->:) <$> [dest])) [] (filter (`elem` M.keys ns) <$> nns)
+    -}
+
+    mergeGraph :: Graph -> Graph -> Maybe Graph
+    mergeGraph　g1 g2 =
+      case (g1 `to` g2, g2 `to` g1) of
+        (tls, fls)
+          | null tls || null fls -> Nothing
+          | otherwise -> undefined
+
+    {-
     to :: Graph -> Graph -> Bool
-    (ns1, ls1, tls1) `to` (ns2, ls2, tls2) =
-      undefined
+    (_, _, lso) `to` (ns, _, _) =
+      any (`elem` M.elems lso) $ M.keys ns
 
     from :: Graph -> Graph -> Bool
-    g1 `from` g2 = undefined
+    (ns, _, _) `from` (_, _, lso) =
+      any (`elem` M.elems lso) $ M.keys ns
+    -}
+
 
 -- uncons :: V.Vector a -> (a, V.Vector a)
 -- uncons v = (V.head v, V.tail v)
@@ -151,20 +175,20 @@ orgLinkCsv n = trace "orgLinkCsv" $ V.filter (\_lwc -> origin (link _lwc) == nod
 destLinkCsv :: Node -> LinkCsv -> LinkCsv
 destLinkCsv n = trace "destLinkCsv" $ V.filter (\_lwc -> destination (link _lwc) == nodeId n)
 
-nextNode :: Node -> LinkCsv -> Set.Set NodeId
-nextNode n lc = trace "nextNode" $ V.foldr Set.insert Set.empty $ destination . link <$> orgLinkCsv n lc
+nextNode :: Node -> LinkCsv -> S.Set NodeId
+nextNode n lc = trace "nextNode" $ V.foldr S.insert S.empty $ destination . link <$> orgLinkCsv n lc
 
 --isNextNode :: NodeId -> NodeId -> LinkCsv -> Bool
 --isNextNode ni2 ni1 lc = ni2 `V.elem` (nextNode ni1 lc)
 
-prevNode :: Node -> LinkCsv -> Set.Set NodeId
-prevNode n lc = trace "prevNode" $ V.foldr Set.insert Set.empty $ origin . link <$> destLinkCsv n lc
+prevNode :: Node -> LinkCsv -> S.Set NodeId
+prevNode n lc = trace "prevNode" $ V.foldr S.insert S.empty $ origin . link <$> destLinkCsv n lc
 
 --isPrevNode :: NodeId -> NodeId -> LinkCsv -> Bool
 --isPrevNode ni1 ni2 lc = ni1 `V.elem` (prevNode ni2 lc)
 
 nearbyNodeNum :: Node -> LinkCsv -> Int
-nearbyNodeNum n lc = trace "nearbyNodeNum" $ Set.size $ nextNode n lc <> prevNode n lc
+nearbyNodeNum n lc = trace "nearbyNodeNum" $ S.size $ nextNode n lc <> prevNode n lc
 
 
 {-
@@ -176,13 +200,13 @@ prevLinkCsv l lc = V.partition (\_lwc -> origin (link _lwc) /= destination l) $ 
 -}
 
 intersection :: LinkCsv -> NodeCsv -> (NodeCsv, NodeCsv)
-intersection lc = trace "intersection" $ Set.partition (\_n -> nearbyNodeNum _n lc > 2)
+intersection lc = trace "intersection" $ S.partition (\_n -> nearbyNodeNum _n lc > 2)
 
 --異なる性質の道路の継ぎ目 (要cutDeadEnd処理済み)
 joint :: LinkCsv -> NodeCsv -> NodeCsv
 joint lc =
-  trace "joint" $ Set.filter
-    (\_n -> Set.size ((Set.union `on` (V.foldr Set.insert Set.empty . (linkCond <$>))) (orgLinkCsv _n lc) (destLinkCsv _n lc)) == 2)
+  trace "joint" $ S.filter
+    (\_n -> S.size ((S.union `on` (V.foldr S.insert S.empty . (linkCond <$>))) (orgLinkCsv _n lc) (destLinkCsv _n lc)) == 2)
 
 {-
 nearbyLinkCsv :: Link -> LinkCsv -> (LinkCsv, LinkCsv)
@@ -201,7 +225,7 @@ nearbyLinkCsv l =
 
 simplifyNetworkCsv :: NetworkCsv -> NetworkCsv
 simplifyNetworkCsv (NetworkCsv lc_ nc_) =
-  trace "simplifyNetworkCsv" $ NetworkCsv (g <$> V.filter (\_lwc -> origin (link _lwc) `Set.member` Set.map nodeId nc0) lc0) nc0 --要修正
+  trace "simplifyNetworkCsv" $ NetworkCsv (g <$> V.filter (\_lwc -> origin (link _lwc) `S.member` S.map nodeId nc0) lc0) nc0 --要修正
   where
     (lc0, nc__) = trace "cutDeadEnd" $ cutDeadEnd lc_ nc_
     (inc, rnc) = trace "intersection" $ intersection lc0 nc__
@@ -210,7 +234,7 @@ simplifyNetworkCsv (NetworkCsv lc_ nc_) =
 
     f :: Link -> Link
     f l@((:->:) org dest _)
-      | dest `Set.member` Set.map nodeId nc0 = l
+      | dest `S.member` S.map nodeId nc0 = l
       | otherwise = l <> f (link . V.head $ V.filter ((`isNextLink` l) . link) lc0)
     
     g :: LinkWithCond -> LinkWithCond
