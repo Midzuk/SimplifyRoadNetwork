@@ -28,7 +28,37 @@ import　　　　　　 Debug.Trace
 -- data NetworkCsv = NetworkCsv LinkCsv NodeCsv deriving (Show)
 type LinksIn = Links
 type LinksOut = Links
-type Graph = (Nodes, LinksIn, LinksOut)
+type Graph =
+  Graph
+    { nodes::Nodes
+    , linksIn :: LinksIn
+    , linksOut :: LinksOut
+    }
+  deriving (Show)
+
+instance Semigroup Graph where
+  g1 <> g2 =
+    case (g1 `to` g2, g2 `to` g1) of
+      (tls, fls)
+        | null tls || null fls -> error "Semigroup Graph error."
+        | otherwise ->
+          Graph
+            (nodes g1 <> nodes g2 <> undefined)
+            
+
+to :: Graph -> Graph -> [Link]
+    (_, _, (nns ,_)) `to` (ns, _, _) =
+      M.foldrWithKey (\org [dest] -> (<>) ((org :->:) <$> [dest])) [] (filter (`elem` M.keys ns) <$> nns)
+
+{-
+    mergeGraph :: Graph -> Graph -> Maybe Graph
+    mergeGraph　g1 g2 =
+      case (g1 `to` g2, g2 `to` g1) of
+        (tls, fls)
+          | null tls || null fls -> Nothing
+          | otherwise -> undefined
+-}
+
 
 makeGroups :: Graph -> V.Vector Graph 
 makeGroups (nodes, links) = undefined
@@ -39,9 +69,8 @@ makeGroups (nodes, links) = undefined
     f :: Node -> Graph -> Graph
     f n (_nodes, _links) = undefined
 
-    to :: Graph -> Graph -> [Link]
-    (_, _, (nns ,_)) `to` (ns, _, _) =
-      M.foldrWithKey (\org [dest] -> (<>) ((org :->:) <$> [dest])) [] (filter (`elem` M.keys ns) <$> nns)
+    
+    
 
     -- foldrWithKey :: (k -> a -> b -> b) -> b -> Map k a -> b
 
@@ -51,12 +80,14 @@ makeGroups (nodes, links) = undefined
       M.foldrWithKey (\org [dest] -> (<>) ((org :->:) <$> [dest])) [] (filter (`elem` M.keys ns) <$> nns)
     -}
 
+    {-
     mergeGraph :: Graph -> Graph -> Maybe Graph
     mergeGraph　g1 g2 =
       case (g1 `to` g2, g2 `to` g1) of
         (tls, fls)
           | null tls || null fls -> Nothing
           | otherwise -> undefined
+    -}
 
     {-
     to :: Graph -> Graph -> Bool
