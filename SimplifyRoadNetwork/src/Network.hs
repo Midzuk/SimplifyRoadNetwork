@@ -28,9 +28,9 @@ import　　　　　　 Debug.Trace
 -- data NetworkCsv = NetworkCsv LinkCsv NodeCsv deriving (Show)
 type LinksIn = Links
 type LinksOut = Links
-type Graph =
+data Graph =
   Graph
-    { nodes::Nodes
+    { nodes :: Nodes
     , linksIn :: LinksIn
     , linksOut :: LinksOut
     }
@@ -39,16 +39,75 @@ type Graph =
 instance Semigroup Graph where
   g1 <> g2 =
     case (g1 `to` g2, g2 `to` g1) of
-      (tls, fls)
-        | null tls || null fls -> error "Semigroup Graph error."
+      (ls1, ls2)
+        | null ls1 || null ls2 -> error "Semigroup Graph error." -- バグ?
         | otherwise ->
-          Graph
-            (nodes g1 <> nodes g2 <> undefined)
-            
+          let
+            (lsi1, lso1) = f2 (linksOut g1) ls1
+            (lsi2, lso2) = f2 (linksOut g2) ls2
+          in
+            Graph
+              { nodes = (nodes g1 <> nodes g2)
+              , linksIn = linksIn g1 `f1` linksIn g2 `f1` lsi1 `f1` lsi2
+              , linksOut = lso1 `f1` lso2
+              }
+    where
+      f1 :: Links -> Links -> Links
+      f1 (mnns1, mllc1) (mnns2, mllc2) = ((M.foldrWithKey (\n ns -> M.insertWith (<>) n ns)) mnns1 mnns2, mllc1 <> mllc2)
+      
+      f2 :: Links -> S.Set Link -> (Links, Links)
+      f2 (mnns, mllc) ls = 
+        case f21 mnns ls of
+          (mnns1, mnns2) ->
+            ((mnns1, mllc `M.restrictKeys` f22 mnns1), (mnns2, mllc `M.restrictKeys` f22 mnns2))
+        where
+          f21 :: M.Map Node (S.Set Node) -> S.Set Link -> (M.Map Node (S.Set Node), M.Map Node (S.Set Node))
+          f21 mnns ls = (f211 ls, f212 mnns ls)
 
+            where
+              f211 :: S.Set Link -> M.Map Node (S.Set Node)
+              f211 = foldr (\(org :->: dest) -> M.insertWith (<>) org [dest]) M.empty
+
+              f212 :: M.Map Node (S.Set Node) -> S.Set Link -> M.Map Node (S.Set Node)
+              f212 = foldr (\(org :->: dest) -> M.adjust (\ns -> dest `S.delete` ns) org)
+          
+          f22 :: M.Map Node (S.Set Node) -> S.Set Link
+          f22 =
+            M.foldrWithKey
+              (\org dests -> (<>) (foldr (\dest -> S.insert (org :->: dest)) [] dests))
+              []
+
+to :: Graph -> Graph -> S.Set Link
+Graph { linksOut = (nns, _) } `to` Graph { nodes = ns } =
+  M.foldrWithKey
+    (\org dests -> (<>) (foldr (\dest -> S.insert (org :->: dest)) [] dests))
+    []
+    (S.filter (`S.member` M.keysSet ns) <$> nns)
+
+connect :: Graph -> Graph -> Maybe Graph
+connect g1 g2 =
+  case (g1 `to` g2, g2 `to` g1) of
+    (ls1, ls2)
+      | null ls1 || null ls2 -> Nothing
+      | otherwise -> g1 <> g2
+
+mix :: Semigroup a => (a -> a -> Maybe a) -> [a] -> [a]
+mix _ [] = []
+mix _ [x] = [x]
+mix f (x:xs) =
+  case catMaybes $ f x <$> xs of
+    [] -> x <> mix f xs
+  where
+    a = catMaybes $ f x <$> xs
+
+{-
 to :: Graph -> Graph -> [Link]
-    (_, _, (nns ,_)) `to` (ns, _, _) =
-      M.foldrWithKey (\org [dest] -> (<>) ((org :->:) <$> [dest])) [] (filter (`elem` M.keys ns) <$> nns)
+Graph {linksOut = (nns, _)} `to` Graph {nodes = ns} =
+  M.foldrWithKey
+    (\org [dest] -> (<>) ((org :->:) <$> [dest]))
+    []
+    (filter (`elem` M.keys ns) <$> nns)
+-}
 
 {-
     mergeGraph :: Graph -> Graph -> Maybe Graph
@@ -59,16 +118,15 @@ to :: Graph -> Graph -> [Link]
           | otherwise -> undefined
 -}
 
-
+{-
 makeGroups :: Graph -> V.Vector Graph 
 makeGroups (nodes, links) = undefined
   where
     ns = M.keysSet nodes
-    undefined
 
     f :: Node -> Graph -> Graph
     f n (_nodes, _links) = undefined
-
+-}
     
     
 
@@ -131,6 +189,7 @@ totalDistance = trace "totalDistance" $ foldr (\_lwc total -> (+) total (distanc
 --data NodeCond = NodeCond { latitude :: Latitude, longitude :: Longitude, signalOut :: SignalOut } deriving (Eq, Show)
 --type NodeCsv = Map.Map Node NodeCond
 
+{-
 cutDeadEnd :: Nodes -> Links -> (Nodes, Links)
 cutDeadEnd = undefined
 
@@ -270,3 +329,4 @@ simplifyNetworkCsv (NetworkCsv lc_ nc_) =
     
     g :: LinkWithCond -> LinkWithCond
     g lwc@(LinkWithCond l cond s) = LinkWithCond (f l) cond s
+-}

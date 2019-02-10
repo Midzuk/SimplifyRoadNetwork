@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GADTs             #-}
 -- {-# LANGUAGE ViewPatterns #-}
 -- {-# LANGUAGE Strict #-}
 -- {-# LANGUAGE StrictData #-}
@@ -16,7 +17,7 @@ import qualified Data.Text            as T
 import qualified Data.Vector          as V
 import qualified System.Directory     as Dir
 import           Data.Monoid
-import qualified Data.Set             as Set
+import qualified Data.Set             as S
 import           Debug.Trace
 
 import           Node
@@ -55,7 +56,7 @@ instance Semigroup LinkCond where
     | otherwise = error "Semigroup LinkCond Error."
 
 type Links =
-  ( M.Map Node [Node]
+  ( M.Map Node (S.Set Node)
   , M.Map Link LinkCond
   )
 
@@ -132,7 +133,7 @@ decodeLinkCsv fp = trace "decodeLinkCsv" $ do
   return $ makeLinks ls
 
 makeLinks :: V.Vector LinkCsv -> Links
-makeLinks lco = foldr f (M.empty, M.empty) lco
+makeLinks lco = foldr f ([], []) lco
   where
     f (LinkCsv org dest dist oneway highway maxSpeed lanes width bridge tunnel surface service foot bicycle) (mn, ml)
       | oneway == Just "yes" =
