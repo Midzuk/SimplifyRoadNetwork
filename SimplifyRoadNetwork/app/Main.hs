@@ -3,8 +3,8 @@
 {-# LANGUAGE OverloadedLists   #-}
 module Main where
 
-import           Link                 (decodeLinkCsv, makeLinkCsv, encodeLinkCsv, LinkWithCond)
-import           Node                 (decodeNodeCsv, makeNodeCsv, encodeNodeCsv)
+import           Link                 
+import           Node                 
 import qualified Data.Map.Lazy        as Map
 import qualified Data.Set             as Set
 import           Network
@@ -24,7 +24,7 @@ main = do
   --let [latOrg, lonOrg, latDest, lonDest] = read <$> args
 
   print "aaaaa"
-
+  {-
   nc <- decodeNodeCsv "/temporary/temp_nodes.csv"
   lc <- decodeLinkCsv "/temporary/temp_links.csv" nc
  
@@ -36,3 +36,4 @@ main = do
 
   writeFile (cd <> "/output/simple_nodes.csv") $ encodeNodeCsv snc
   writeFile (cd <> "/output/simple_links.csv") $ encodeLinkCsv slc
+  -}
